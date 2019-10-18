@@ -1,0 +1,41 @@
+Problem:    parte_b
+Rows:       6
+Columns:    3
+Non-zeros:  11
+Status:     OPTIMAL
+Objective:  z = 11462000 (MAXimum)
+
+   No.   Row name   St   Activity     Lower bound   Upper bound    Marginal
+------ ------------ -- ------------- ------------- ------------- -------------
+     1 procEq1      NU          8000                        8000          1460 
+     2 procEq2      NU             0                          -0           800 
+     3 procEq3      B           7750           102               
+     4 procEq4      NL           500           500                        -130 
+     5 procEq5      B            450                         800 
+     6 z            B     1.1615e+07                             
+
+   No. Column name  St   Activity     Lower bound   Upper bound    Marginal
+------ ------------ -- ------------- ------------- ------------- -------------
+     1 EGOLD        B           7750             0               
+     2 ESILVER      B            500             0               
+     3 MERCH        B            450             0               
+
+Karush-Kuhn-Tucker optimality conditions:
+
+KKT.PE: max.abs.err = 0.00e+00 on row 0
+        max.rel.err = 0.00e+00 on row 0
+        High quality
+
+KKT.PB: max.abs.err = 0.00e+00 on row 0
+        max.rel.err = 0.00e+00 on row 0
+        High quality
+
+KKT.DE: max.abs.err = 0.00e+00 on column 0
+        max.rel.err = 0.00e+00 on column 0
+        High quality
+
+KKT.DB: max.abs.err = 0.00e+00 on row 0
+        max.rel.err = 0.00e+00 on row 0
+        High quality
+
+End of output
