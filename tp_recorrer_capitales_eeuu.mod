@@ -1,11 +1,18 @@
 printf "Hola Mundo \n";
+
+/* datos */
+# set CIUDADES := 1..48;
+set CIUDADES;   # distancias de ciudad a ciudad
+param DISTANCIA {i in CIUDADES}; 
+
+table Distancia_ciudades IN "CSV" "distancia_ciudad_a_ciudad.csv" : CIUDADES <- [Distancia], KM ~ Distancia_ciudades;
+
+
 /* Constantes */
 param MAX_CIUDADES = 48;
 param VALKM = 2;
 param DIAHOTEL = 50;
 
-/*Ciudades*/
-set CIUDADES := 1..48;
 
 /* Variables */
 #Yij, bivalente que vale 1 si va desde la ciudad i hasta la j (i != j)
@@ -17,7 +24,7 @@ var KM {i in CIUDADES, j in CIUDADES: i<>j} >= 0;
 # 1 si el viaje de la ciudad i a la j es largo (>=250 Kms)
 var YNA {i in CIUDADES, j in CIUDADES: i<>j} >= 0, binary;
 
-# 1 si la ciudad i fue visitada después de X km
+# 1 si la ciudad i fue visitada despuï¿½s de X km
 var Ymas10K {i in CIUDADES} >= 0, binary;
 var Ymas20K {i in CIUDADES} >= 0, binary;
 var Ymas30K {i in CIUDADES} >= 0, binary;
@@ -33,14 +40,14 @@ var COMIDA >= 0; # Total de plata gastada en comida
 var AGUA >= 0; # Total de plata gastada en agua
 
 var CANTDesc >= 0; #Cantidad de paradas para descanso
-var CANTHidra >= 0; # Cantidad de paradas para hidratación
+var CANTHidra >= 0; # Cantidad de paradas para hidrataciï¿½n
 
 var AGUASH >= 0; # Total de plata gastada si NO compramos la heladera
 var AGUACH >= 0; # Total de plata gastada si compramos la heladera
 var EXC_SH >= 0; # Indica el exceso de plata gastada si NO compramos la heladera
 var EXC_CH >= 0; # Indica el exceso de plata gastada si compramos la heladera
 
-var U{i in CIUDADES} >=0, integer; # Número de secuencia en la cual la ciudad i es visitada
+var U{i in CIUDADES} >=0, integer; # Nï¿½mero de secuencia en la cual la ciudad i es visitada
 
 /* Funcional */ 
 minimize z: ESTADIA + NAFTA + AGUA + COMIDA;
@@ -55,10 +62,10 @@ s.t. llegoJ{j in CIUDADES}: sum{i in CIUDADES: i<>j} Y[i,j] = 1;
 # Elimina subtours 
 s.t. orden{i in CIUDADES, j in CIUDADES: i<>j}: U[i] - U[j] + card(CIUDADES) * Y[i,j] <= card(CIUDADES) - 1;
 
-# Restricción de nafta
+# Restricciï¿½n de nafta
 #var KmViaje = sum{i in CIUDADES, j in CIUDADES} KM[i,j] * Y[i,j];
 
-# Restricción de alojamiento
+# Restricciï¿½n de alojamiento
 #var nochesnormales = sum{i in CIUDADES, j in CIUDADES} Y[i,j];
 
 solve;
