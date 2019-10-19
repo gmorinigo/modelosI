@@ -1,11 +1,11 @@
 printf "Hola Mundo \n";
 /* Constantes */
-var MAX_CIUDADES = 48;
-var VALKM = 2;
-var DIAHOTEL = 50;
+param MAX_CIUDADES = 48;
+param VALKM = 2;
+param DIAHOTEL = 50;
 
 /*Ciudades*/
-set CIUDADES;
+set CIUDADES := 1..MAX_CIUDADES;
 
 /* Variables */
 #Yij, bivalente que vale 1 si va desde la ciudad i hasta la j (i != j)
