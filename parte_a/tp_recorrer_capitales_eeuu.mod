@@ -6,7 +6,7 @@ set CIUDADES := 0..47;
 set DIST, dimen 2; # matriz distancias de la ciudad "i" a ciudad "j"
 param DISTANCIAS {i in CIUDADES, j in CIUDADES}; 
 
-table Distancias IN "CSV" "distancias_formato_3_columnas.csv":
+table Distancias IN "CSV" "./datos/distancias_formato_3_columnas.csv":
 DIST <- [CiudadOrigen,CiudadDestino], DISTANCIAS ~ Distancia;
 
 /* Constantes */
