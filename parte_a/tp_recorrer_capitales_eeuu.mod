@@ -43,15 +43,16 @@ var NOCHES_TOTALES >= 0;
 var ESTADIA >= 0; # Total de plata gastada en estadia
 var NAFTA >= 0; # Total de plata gastada en nafta
 var COMIDA >= 0; # Total de plata gastada en comida
-var AGUA >= 0; # Total de plata gastada en agua
 
+var AGUA >= 0; # Total de plata gastada en agua
 var CANTDesc >= 0; #Cantidad de paradas para descanso
 var CANTHidra >= 0; # Cantidad de paradas para hidrataci�n
-
 var AGUA_SIN_H >= 0; # Total de plata gastada si NO compramos la heladera
 var AGUA_CON_H >= 0; # Total de plata gastada si compramos la heladera
-var EXC_SH >= 0; # Indica el exceso de plata gastada si NO compramos la heladera
-var EXC_CH >= 0; # Indica el exceso de plata gastada si compramos la heladera
+var YH1 >= 0, binary;
+var YH2 >= 0, binary;
+
+var Yj_antesde_i{i in CIUDADES, j in CIUDADES: i<>j} >= 0, binary;
 
 var U{i in CIUDADES} >=0, integer; # N�mero de secuencia en la cual la ciudad i es visitada
 
@@ -60,9 +61,7 @@ var U{i in CIUDADES} >=0, integer; # N�mero de secuencia en la cual la ciudad 
 
 
 
-/* RESTRICCIONES */
-
-
+/* ----------------------------- RESTRICCIONES ----------------------------- */
 
 
 
@@ -93,6 +92,10 @@ s.t. TotalNafta: NAFTA = KmViaje * VALKM;
 
 
 
+
+
+
+
 /* RESTRICCION DE ALOJAMIENTO */
 s.t. NochesNormales: NOCHES_NORMALES = sum{i in CIUDADES, j in CIUDADES: i<>j} YViaje[i,j];
 
@@ -103,7 +106,11 @@ s.t. YNA_3{i in CIUDADES, j in CIUDADES: i<>j}: YNA[i,j] <= YViaje[i,j];
 
 s.t. NochesAdicionales: NOCHES_ADICIONALES = sum{i in CIUDADES, j in CIUDADES: i<>j} YNA[i,j];
 s.t. NochesTotales: NOCHES_TOTALES = NOCHES_NORMALES + NOCHES_ADICIONALES;
-s.t. TotalEstadia: ESTADIA = NOCHES_TOTALES;
+s.t. TotalEstadia: ESTADIA = NOCHES_TOTALES * DIAHOTEL;
+
+
+
+
 
 
 
@@ -113,13 +120,31 @@ s.t. CantidadParadasDescanso: CANTDesc = KmViaje/100;
 s.t. CantidadParadasHidratacion: CANTHidra = CANTDesc/2;
 s.t. PrecioAguaConHeladera: AGUA_CON_H = 60 + (CANTHidra*2);
 s.t. PrecioAguaSinHeladera: AGUA_SIN_H = CANTHidra*3;
-s.t. CotaInfExcSinHeladera: (m_m*YH)<=EXC_SH;
-s.t. CotaInfExcConHeladera: (m_m*(1-YH))<=EXC_CH;
-s.t. CotaSupExcSinHeladera: EXC_SH<=(M_M*YH);
-s.t. CotaSupExcConHeladera: EXC_CH<=(M_M*(1-YH));
-s.t. DetectaCompraHeladera: AGUA_SIN_H - AGUA_CON_H = EXC_SH-EXC_CH;
 
-#s.t. TotalAgua: AGUA = (YH*AGUA_CON_H)+((1-YH)*AGUA_SIN_H);
+s.t. TotalAgua11: (-M_M * YH1) + AGUA_CON_H <= AGUA;
+s.t. TotalAgua12: AGUA <= AGUA_CON_H;
+s.t. TotalAgua21: (-M_M * YH2) + AGUA_SIN_H <= AGUA;
+s.t. TotalAgua22: AGUA <= AGUA_SIN_H;
+s.t. soloUnaOpcionDeAgua: YH1 + YH2 = 1;
+
+
+
+
+
+
+
+
+/* RESTRICCION DE COMIDA */
+
+s.t. VisiteCiudadJAntesdeI_1{i in CIUDADES, j in CIUDADES: i<>j}: -M_M * (1 - Yj_antesde_i[i,j]) <= (U[i] - U[j]);
+s.t. VisiteCiudadJAntesdeI_2{i in CIUDADES, j in CIUDADES: i<>j}: (U[i] - U[j]) <= M_M * (Yj_antesde_i[i,j]);
+#s.t. SumaComidas:
+
+
+
+
+
+
 
 
 
@@ -153,12 +178,12 @@ printf "-- COMIDA ----------------\n";
 printf "COMIDA: %.2f\n", COMIDA;
 printf "--\n";
 
-printf "-- PRUEBAS ----------------\n";
-printf YH;
-printf "\n--\n";
-printf AGUA_CON_H;
-printf "\n--\n";
-printf AGUA_SIN_H;
-printf "\n--\n";
+#printf "-- PRUEBAS ----------------\n";
+#printf YH;
+#printf "\n--\n";
+#printf AGUA_CON_H;
+#printf "\n--\n";
+#printf AGUA_SIN_H;
+#printf "\n--\n";
 
 end; 
