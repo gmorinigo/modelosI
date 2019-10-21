@@ -1,16 +1,21 @@
 printf "----------- INICIO ----------\n";
 
 /* datos */
-set CIUDADES := 0..47;
+set CIUDADES := 0..10;
 
 set DIST, dimen 2; # matriz distancias de la ciudad "i" a ciudad "j"
 param DISTANCIAS {i in CIUDADES, j in CIUDADES}; 
 
-table TDist IN "CSV" "./datos/distancias_formato_3_columnas.csv":
+#table TDist IN "CSV" "./datos/distancias_formato_3_columnas.csv":
+#table TDist IN "CSV" "./datos/5_ciudades.csv":
+table TDist IN "CSV" "./datos/10_ciudades.csv":
+#table TDist IN "CSV" "./datos/20_ciudades.csv":
+#table TDist IN "CSV" "./datos/30_ciudades.csv":
+#table TDist IN "CSV" "./datos/dist_ciudad_origen.csv": # POSTA DE 48, son 49 con una de inicio en 0
 DIST <- [CiudadOrigen,CiudadDestino], DISTANCIAS ~ Distancia;
 
 /* Constantes */
-param MAX_CIUDADES := 48;
+param MAX_CIUDADES := card(CIUDADES)-1;      #0..48 --> (49 - 1) = 48
 param VALKM := 2;
 param DIAHOTEL := 50;
 param m_m := 0.0000001;
@@ -64,9 +69,7 @@ var KmAcumulados {i in CIUDADES} >= 0;
 /* ----------------------------- RESTRICCIONES ----------------------------- */
 
 
-
-
-/* RESTRICCION BASICA DEL VIAJANTE */
+############ RESTRICCION BASICA DEL VIAJANTE ############
 # Salidas
 s.t. voyI{i in CIUDADES}: sum{j in CIUDADES: i<>j} YViaje[i,j] = 1;
 
@@ -74,7 +77,9 @@ s.t. voyI{i in CIUDADES}: sum{j in CIUDADES: i<>j} YViaje[i,j] = 1;
 s.t. llegoJ{j in CIUDADES}: sum{i in CIUDADES: i<>j} YViaje[i,j] = 1;
 
 # Elimina subtours 
-#s.t. orden{i in CIUDADES, j in CIUDADES: i<>j}: U[i] - U[j] + card(CIUDADES) * YViaje[i,j] <= card(CIUDADES) - 1;
+s.t. maxorden{i in CIUDADES: i>=1}: U[i] <= card(CIUDADES) - 1;
+s.t. minorden{i in CIUDADES: i>=1}: U[i] >= 1;
+s.t. orden{i in 1..card(CIUDADES)-1, j in 1..card(CIUDADES)-1: i<>j}: U[i] - U[j] + card(CIUDADES) * YViaje[i,j] <= card(CIUDADES) - 1;
 
 
 
@@ -83,7 +88,7 @@ s.t. llegoJ{j in CIUDADES}: sum{i in CIUDADES: i<>j} YViaje[i,j] = 1;
 
 
 
-/* RESTRICCION DE NAFTA */
+############ RESTRICCION DE NAFTA ############
 s.t. KmViajados: KmViaje = sum{i in CIUDADES, j in CIUDADES: i<>j} DISTANCIAS[i,j] * YViaje[i,j];
 s.t. TotalNafta: NAFTA = KmViaje * VALKM;
 
@@ -96,13 +101,12 @@ s.t. TotalNafta: NAFTA = KmViaje * VALKM;
 
 
 
-/* RESTRICCION DE ALOJAMIENTO */
+############ RESTRICCION DE ALOJAMIENTO ############
 s.t. NochesNormales: NOCHES_NORMALES = sum{i in CIUDADES, j in CIUDADES: i<>j} YViaje[i,j];
 
 s.t. YNA_1{i in CIUDADES, j in CIUDADES: i<>j}: (250 * YNA[i,j]) <= DISTANCIAS[i,j] * YViaje[i,j];
-s.t. YNA_2{i in CIUDADES, j in CIUDADES: i<>j}: DISTANCIAS[i,j] * YViaje[i,j] <= 250 + (YNA[i,j] * 1000);
+s.t. YNA_2{i in CIUDADES, j in CIUDADES: i<>j}: DISTANCIAS[i,j] * YViaje[i,j] <= 250 + (YNA[i,j] * M_M);
 s.t. YNA_3{i in CIUDADES, j in CIUDADES: i<>j}: YNA[i,j] <= YViaje[i,j];
-
 
 s.t. NochesAdicionales: NOCHES_ADICIONALES = sum{i in CIUDADES, j in CIUDADES: i<>j} YNA[i,j];
 s.t. NochesTotales: NOCHES_TOTALES = NOCHES_NORMALES + NOCHES_ADICIONALES;
@@ -115,7 +119,7 @@ s.t. TotalEstadia: ESTADIA = NOCHES_TOTALES * DIAHOTEL;
 
 
 
-/* RESTRICCION DE AGUA */
+############ RESTRICCION DE AGUA ############
 s.t. CantidadParadasDescanso: CANTDesc = KmViaje/100;
 s.t. CantidadParadasHidratacion: CANTHidra = CANTDesc/2;
 s.t. PrecioAguaConHeladera: AGUA_CON_H = 60 + (CANTHidra*2);
@@ -134,13 +138,13 @@ s.t. soloUnaOpcionDeAgua: YH1 + YH2 = 1;
 
 
 
-/* RESTRICCION DE COMIDA */
+############ RESTRICCION DE COMIDA ############
 
 s.t. VisiteCiudadJAntesdeI_1{i in CIUDADES, j in CIUDADES: i<>j}: -M_M * (1 - Yj_antesde_i[i,j]) <= (U[i] - U[j]);
 s.t. VisiteCiudadJAntesdeI_2{i in CIUDADES, j in CIUDADES: i<>j}: (U[i] - U[j]) <= M_M * (Yj_antesde_i[i,j]);
 s.t. KmAcumuladosHastaCiudadI{j in CIUDADES}: KmAcumulados[j] = sum{i in CIUDADES: i<>j} Yj_antesde_i[i,j] * DISTANCIAS[i,j];
 
-#s.t. SumaComidas: COMIDA = COMIDA_NOCHES1 + COMIDA_NOCHES2;
+s.t. SumaComidas: COMIDA = COMIDA_NOCHES1 + COMIDA_NOCHES2;
 
 
 
@@ -194,7 +198,8 @@ printf "COMIDA: %.2f\n", COMIDA;
 printf "--\n";
 
 printf "-- OTROS DATOS ----------------\n";
-printf AGUA_CON_H;
+printf "card(CIUDADES): %.2f\n", card(CIUDADES);
+printf "card(DIST): %.2f\n", card(DIST);
 printf "\n--\n";
 
 end; 
