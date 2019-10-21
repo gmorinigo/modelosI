@@ -1,7 +1,11 @@
 printf "----------- INICIO ----------\n";
 
 /* datos */
+#set CIUDADES := 0..5;
 set CIUDADES := 0..10;
+#set CIUDADES := 0..21;
+#set CIUDADES := 0..31;
+#set CIUDADES := 0..48;
 
 set DIST, dimen 2; # matriz distancias de la ciudad "i" a ciudad "j"
 param DISTANCIAS {i in CIUDADES, j in CIUDADES}; 
@@ -9,9 +13,9 @@ param DISTANCIAS {i in CIUDADES, j in CIUDADES};
 #table TDist IN "CSV" "./datos/distancias_formato_3_columnas.csv":
 #table TDist IN "CSV" "./datos/5_ciudades.csv":
 table TDist IN "CSV" "./datos/10_ciudades.csv":
-#table TDist IN "CSV" "./datos/20_ciudades.csv":
-#table TDist IN "CSV" "./datos/30_ciudades.csv":
-#table TDist IN "CSV" "./datos/dist_ciudad_origen.csv": # POSTA DE 48, son 49 con una de inicio en 0
+#table TDist IN "CSV" "./datos/21_ciudades.csv":
+#table TDist IN "CSV" "./datos/31_ciudades.csv":
+#table TDist IN "CSV" "./datos/48_ciudades.csv": # POSTA DE 48, son 49 con una de inicio en 0
 DIST <- [CiudadOrigen,CiudadDestino], DISTANCIAS ~ Distancia;
 
 /* Constantes */
@@ -117,8 +121,6 @@ s.t. TotalEstadia: ESTADIA = NOCHES_TOTALES * DIAHOTEL;
 
 
 
-
-
 ############ RESTRICCION DE AGUA ############
 s.t. CantidadParadasDescanso: CANTDesc = KmViaje/100;
 s.t. CantidadParadasHidratacion: CANTHidra = CANTDesc/2;
@@ -136,16 +138,14 @@ s.t. soloUnaOpcionDeAgua: YH1 + YH2 = 1;
 
 
 
-
-
+/*
 ############ RESTRICCION DE COMIDA ############
-
 s.t. VisiteCiudadJAntesdeI_1{i in CIUDADES, j in CIUDADES: i<>j}: -M_M * (1 - Yj_antesde_i[i,j]) <= (U[i] - U[j]);
 s.t. VisiteCiudadJAntesdeI_2{i in CIUDADES, j in CIUDADES: i<>j}: (U[i] - U[j]) <= M_M * (Yj_antesde_i[i,j]);
 s.t. KmAcumuladosHastaCiudadI{j in CIUDADES}: KmAcumulados[j] = sum{i in CIUDADES: i<>j} Yj_antesde_i[i,j] * DISTANCIAS[i,j];
 
 s.t. SumaComidas: COMIDA = COMIDA_NOCHES1 + COMIDA_NOCHES2;
-
+*/
 
 
 
