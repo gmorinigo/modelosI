@@ -2,6 +2,7 @@ printf "----------- INICIO ----------\n";
 
 /* datos */
 set CIUDADES := 0..5;
+#set CIUDADES := 0..7;
 #set CIUDADES := 0..10;
 #set CIUDADES := 0..21;
 #set CIUDADES := 0..31;
@@ -12,6 +13,7 @@ param DISTANCIAS {i in CIUDADES, j in CIUDADES};
 
 #table TDist IN "CSV" "./datos/distancias_formato_3_columnas.csv":
 table TDist IN "CSV" "./datos/5_ciudades.csv":
+#table TDist IN "CSV" "./datos/7_ciudades.csv":
 #table TDist IN "CSV" "./datos/10_ciudades.csv":
 #table TDist IN "CSV" "./datos/21_ciudades.csv":
 #table TDist IN "CSV" "./datos/31_ciudades.csv":
@@ -28,7 +30,7 @@ param M_M := 1000000000;
 /* Variables */
 # bivalente que vale 1 si va desde la ciudad i hasta la j (i != j)
 var YViaje{i in CIUDADES, j in CIUDADES: i<>j} >= 0, binary;
-var U{1..5} >=0, integer; # Numero de secuencia en la cual la ciudad i es visitada
+var U{1..TOTAL_CIUDADES} >=0, integer; # Numero de secuencia en la cual la ciudad i es visitada
 
 # bivalente, 1 si el viaje de la ciudad i a la j es largo (>=250 Kms)
 # indica si entre las 2 ciudades se queda una NOCHE ADICIONAL
@@ -82,14 +84,14 @@ var AGUA_CON_H >= 0; # Total de plata gastada si compramos la heladera
 var YH1 >= 0, binary;
 var YH2 >= 0, binary;
 
-var Yj_antesde_i{i in CIUDADES, j in CIUDADES: i<>j} >= 0, binary;
+var Yi_a_j{i in CIUDADES, j in CIUDADES: i<>j} >= 0, binary; # Indica si la ciudad i fue visitada antes que la ciudad j
+var YANDijk{i in CIUDADES, j in CIUDADES, k in CIUDADES} >= 0, binary;
 var KmAcumulados {i in CIUDADES} >= 0;
 
 
 
 
 /* ----------------------------- RESTRICCIONES ----------------------------- */
-
 
 ############ RESTRICCION BASICA DEL VIAJANTE ############
 # Salidas
@@ -108,15 +110,9 @@ s.t. orden{i in 1..TOTAL_CIUDADES, j in 1..TOTAL_CIUDADES: i<>j}: U[i] - U[j] + 
 
 
 
-
-
 ############ RESTRICCION DE NAFTA ############
 s.t. KmViajados: KmViaje = sum{i in CIUDADES, j in CIUDADES: i<>j} DISTANCIAS[i,j] * YViaje[i,j];
 s.t. TotalNafta: NAFTA = KmViaje * VALKM;
-
-
-
-
 
 
 
@@ -137,8 +133,6 @@ s.t. TotalEstadia: ESTADIA = NOCHES_TOTALES * DIAHOTEL;
 
 
 
-
-
 ############ RESTRICCION DE AGUA ############
 s.t. CantidadParadasDescanso: CANTDesc = KmViaje/100;
 s.t. CantidadParadasHidratacion: CANTHidra = CANTDesc/2;
@@ -154,39 +148,54 @@ s.t. soloUnaOpcionDeAgua: YH1 + YH2 = 1;
 
 
 
-
-
-
 ############ RESTRICCION DE COMIDA ############
-s.t. VisiteCiudadJAntesdeI_1{i in 1..TOTAL_CIUDADES, j in 1..TOTAL_CIUDADES: i<>j}: -M_M * (1 - Yj_antesde_i[i,j]) <= (U[i] - U[j]);
-s.t. VisiteCiudadJAntesdeI_2{i in 1..TOTAL_CIUDADES, j in 1..TOTAL_CIUDADES: i<>j}: (U[i] - U[j]) <= M_M * (Yj_antesde_i[i,j]);
-s.t. KmAcumuladosHastaCiudadI{i in CIUDADES}: KmAcumulados[i] = sum{j in CIUDADES: i<>j} Yj_antesde_i[i,j] * DISTANCIAS[i,j];
+
+s.t. VisiteCiudadIAntesdeJ_1{i in 1..TOTAL_CIUDADES, j in 1..TOTAL_CIUDADES: i<>j}: -M_M * (1 - Yi_a_j[i,j]) <= (U[j] - U[i]);
+s.t. VisiteCiudadIAntesdeJ_2{i in 1..TOTAL_CIUDADES, j in 1..TOTAL_CIUDADES: i<>j}: (U[j] - U[i]) <= M_M * (Yi_a_j[i,j]);
+
+## Ands entre las YViaje y Yi_a_j (indicadora si se visita I antes que J)
+## Esto da una matriz de 3 dimesiones, que es la que despues sirve para multiplicar por la matriz de distancias
+s.t. ANDijk_1{i in 1..TOTAL_CIUDADES, j in 1..TOTAL_CIUDADES, k in 1..TOTAL_CIUDADES: i<>j and i<>k}: 2 * YANDijk[i,j,k] <= YViaje[i,j] + Yi_a_j[i,k];
+s.t. ANDijk_2{i in 1..TOTAL_CIUDADES, j in 1..TOTAL_CIUDADES, k in 1..TOTAL_CIUDADES: i<>j and i<>k}: YViaje[i,j] + Yi_a_j[i,k] <= YANDijk[i,j,k] + 1;
+
+## aca esta la acumulacion, usando la matriz de 3 dimensiones.
+s.t. KmAcumuladosHastaK{k in 1..TOTAL_CIUDADES}: KmAcumulados[k] = sum{i in 1..TOTAL_CIUDADES,j in 1..TOTAL_CIUDADES: i<>j} YANDijk[i,j,k] * DISTANCIAS[i,j];
+
+# restriccion adicional que no deberia ser necesaria
+s.t. KmAcumuladosHastaK_2{j in CIUDADES: j>0}: KmAcumulados[j] <= KmViaje;
+
 
 s.t. CiudadISupera10k_1{j in CIUDADES: j>0}: 10000 * (Ymas10K[j]) <= KmAcumulados[j];
 s.t. CiudadISupera10k_2{j in CIUDADES: j>0}: KmAcumulados[j] <= 10000 + (Ymas10K[j] * M_M);
 s.t. fixed_1: Ymas10K[0] = 0;
+s.t. CantCiudadesMas10k_0: CantCiudadesMas10k <= TOTAL_CIUDADES;
+s.t. CantCiudadesMas10k_1: CantCiudadesMas10k = sum{i in CIUDADES} Ymas10K[i];
+
 
 s.t. CiudadISupera20k_1{j in CIUDADES: j>0}: 20000 * (Ymas20K[j]) <= KmAcumulados[j];
 s.t. CiudadISupera20k_2{j in CIUDADES: j>0}: KmAcumulados[j] <= 20000 + (Ymas20K[j] * M_M);
 s.t. fixed_2: Ymas20K[0] = 0;
+s.t. CantCiudadesMas20k_0: CantCiudadesMas20k <= TOTAL_CIUDADES;
+s.t. CantCiudadesMas20k_1: CantCiudadesMas20k = sum{i in CIUDADES} Ymas20K[i];
+
 
 s.t. CiudadISupera30k_1{j in CIUDADES: j>0}: 30000 * (Ymas30K[j]) <= KmAcumulados[j];
 s.t. CiudadISupera30k_2{j in CIUDADES: j>0}: KmAcumulados[j] <= 30000 + (Ymas30K[j] * M_M);
 s.t. fixed_3: Ymas30K[0] = 0;
-
-#s.t. CiudadISupera40k_1{j in CIUDADES: j>0}: 40000 * (Ymas40K[j]) <= KmAcumulados[j];
-#s.t. CiudadISupera40k_2{j in CIUDADES: j>0}: KmAcumulados[j] <= 40000 + (Ymas40K[j] * M_M);
-
-s.t. CantCiudadesMas10k_1: CantCiudadesMas10k = sum{i in CIUDADES} Ymas10K[i];
-s.t. CantCiudadesMas20k_2: CantCiudadesMas20k = sum{i in CIUDADES} Ymas20K[i];
-s.t. CantCiudadesMas30k_3: CantCiudadesMas30k = sum{i in CIUDADES} Ymas30K[i];
-#s.t. CantCiudadesMas40k_4: CantCiudadesMas40k = sum{i in CIUDADES} Ymas40K[i];
+s.t. CantCiudadesMas30k_0: CantCiudadesMas30k <= TOTAL_CIUDADES;
+s.t. CantCiudadesMas30k_1: CantCiudadesMas30k = sum{i in CIUDADES} Ymas30K[i];
 
 
-s.t. ComidaNochesNormales: COMIDA_NOCHES1 = (30*TOTAL_CIUDADES)-(5*CantCiudadesMas10k)-(5*CantCiudadesMas20k)-(5*CantCiudadesMas30k)-(5*CantCiudadesMas40k);
+#s.t. ComidaNochesNormales: COMIDA_NOCHES1 = (30*TOTAL_CIUDADES)-(5*CantCiudadesMas10k)-(5*CantCiudadesMas20k)-(5*CantCiudadesMas30k)-(5*CantCiudadesMas40k);
+#s.t. ComidaNochesNormales: COMIDA_NOCHES1 = (30*TOTAL_CIUDADES)-(5*CantCiudadesMas10k)-(5*CantCiudadesMas20k)-(5*CantCiudadesMas30k);
+#s.t. ComidaNochesNormales: COMIDA_NOCHES1 = (30*TOTAL_CIUDADES)-(5*CantCiudadesMas10k)-(5*CantCiudadesMas20k);
+#s.t. ComidaNochesNormales: COMIDA_NOCHES1 = (30*TOTAL_CIUDADES)-(5*CantCiudadesMas10k);
+s.t. ComidaNochesNormales: COMIDA_NOCHES1 = (30*TOTAL_CIUDADES);
 
 
-#Inicio conteo para noches adicionales, separadas por los segmentos de kilometros...
+
+
+/*#Inicio conteo para noches adicionales, separadas por los segmentos de kilometros...
 s.t. YNAi{i in CIUDADES}: YNA_i[i] = sum{j in CIUDADES: i<>j} YNA[i,j];
 
 
@@ -207,31 +216,23 @@ s.t. YiNA_30kmask_2{i in CIUDADES}: YNA_i[i] + (Ymas10K[i])+ (Ymas20K[i]) +(Ymas
 s.t. TotalAdicionales30kmask: TotalNA_30kmask = sum{i in CIUDADES} YNA_30kmask[i];
 
 
-s.t. ComidaNochesAdicionales: COMIDA_NOCHES2 = (30 * TotalNA_0k10k) + (25 * TotalNA_10k20k) + (20 * TotalNA_20k30k) + (15 * TotalNA_30kmask);
-
+s.t. ComidaNochesAdicionales: COMIDA_NOCHES2 = (30 * TotalNA_0k10k) + (25 * TotalNA_10k20k) + (20 * TotalNA_20k30k) + (15 * TotalNA_30kmask);*/
 
 
 s.t. SumaComidas: COMIDA = COMIDA_NOCHES1 + COMIDA_NOCHES2;
 
-
 /* ------------------------ FIN DE RESTRICCIONES ----------------------------- */
+
 
 
 /* Funcional */ 
 minimize z: NAFTA + ESTADIA + AGUA + COMIDA;
 
 
+
 printf "----------- FIN ----------\n";
 solve;
 /* ------------------------ FIN DE MODELO ----------------------------- */
-
-
-
-
-
-
-
-
 
 
 
@@ -277,39 +278,60 @@ printf "card(CIUDADES): %.2f\n", card(CIUDADES);
 printf "card(DIST): %.2f\n", card(DIST);
 printf "TOTAL_CIUDADES: %.2f\n", TOTAL_CIUDADES;
 
-printf "Ymas10K[0] %.2f\n", Ymas10K[0];
-printf "Ymas10K[1] %.2f\n", Ymas10K[1];
-
 printf "--VIAJES ----------------\n";
-printf "YViaje[0,1] %.2f\n", YViaje[0,1];
-printf "YViaje[1,3] %.2f\n", YViaje[1,3];
-printf "YViaje[3,5] %.2f\n", YViaje[3,5];
-printf "YViaje[5,2] %.2f\n", YViaje[5,2];
-printf "YViaje[2,4] %.2f\n", YViaje[2,4];
-printf "YViaje[4,0] %.2f\n", YViaje[4,0];
-printf "DISTANCIAS[0,1] %.2f\n", DISTANCIAS[0,1];
+printf "YViaje[0,4] %.2f\n", YViaje[0,4];
+printf "YViaje[4,2] %.2f\n", YViaje[4,2];
+printf "YViaje[2,5] %.2f\n", YViaje[2,5];
+printf "YViaje[5,3] %.2f\n", YViaje[5,3];
+printf "YViaje[3,1] %.2f\n", YViaje[3,1];
+#printf "YViaje[1,7] %.2f\n", YViaje[1,7];
+#printf "YViaje[7,6] %.2f\n", YViaje[7,6];
+#printf "YViaje[6,0] %.2f\n", YViaje[6,0];
+
+printf "--DISTANCIAS ----------------\n";
+#printf "DISTANCIAS[0,6] %.2f\n", DISTANCIAS[0,6];
+#printf "DISTANCIAS[6,7] %.2f\n", DISTANCIAS[6,7];
+#printf "DISTANCIAS[7,1] %.2f\n", DISTANCIAS[7,1];
 printf "DISTANCIAS[1,3] %.2f\n", DISTANCIAS[1,3];
 printf "DISTANCIAS[3,5] %.2f\n", DISTANCIAS[3,5];
 printf "DISTANCIAS[5,2] %.2f\n", DISTANCIAS[5,2];
 printf "DISTANCIAS[2,4] %.2f\n", DISTANCIAS[2,4];
 printf "DISTANCIAS[4,0] %.2f\n", DISTANCIAS[4,0];
-printf "KmAcumulados[0] %.2f\n", KmAcumulados[0];
-printf "KmAcumulados[1] %.2f\n", KmAcumulados[1];
-printf "KmAcumulados[2] %.2f\n", KmAcumulados[2];
-printf "KmAcumulados[3] %.2f\n", KmAcumulados[3];
+
+printf "--VIAJES Km Acumulados hasta ----------------\n";
 printf "KmAcumulados[4] %.2f\n", KmAcumulados[4];
+printf "KmAcumulados[2] %.2f\n", KmAcumulados[2];
 printf "KmAcumulados[5] %.2f\n", KmAcumulados[5];
+printf "KmAcumulados[3] %.2f\n", KmAcumulados[3];
+printf "KmAcumulados[1] %.2f\n", KmAcumulados[1];
+#printf "KmAcumulados[7] %.2f\n", KmAcumulados[7];
+#printf "KmAcumulados[6] %.2f\n", KmAcumulados[6];
 
+printf "--CIUDADES A MAS DE 10k ----------------\n";
+printf "Ymas10K[0] %.2f\n", Ymas10K[0];
+printf "Ymas10K[1] %.2f\n", Ymas10K[1];
+printf "Ymas10K[2] %.2f\n", Ymas10K[2];
+printf "Ymas10K[3] %.2f\n", Ymas10K[3];
+printf "Ymas10K[4] %.2f\n", Ymas10K[4];
+printf "Ymas10K[5] %.2f\n", Ymas10K[5];
+#printf "Ymas10K[6] %.2f\n", Ymas10K[6];
+#printf "Ymas10K[7] %.2f\n", Ymas10K[7];
 
+printf "--CANT CIUDADES A MAS DE X km ----------------\n";
+printf "CantCiudadesMas10k %.2f\n", CantCiudadesMas10k;
+printf "CantCiudadesMas20k %.2f\n", CantCiudadesMas20k;
+printf "CantCiudadesMas30k %.2f\n", CantCiudadesMas30k;
+
+printf "--VIAJES ORDEN ----------------\n";
 printf "U[1] %.2f\n", U[1];
 printf "U[2] %.2f\n", U[2];
 printf "U[3] %.2f\n", U[3];
 printf "U[4] %.2f\n", U[4];
 printf "U[5] %.2f\n", U[5];
-printf "--VIAJES ----------------\n";
+#printf "U[6] %.2f\n", U[6];
+#printf "U[7] %.2f\n", U[7];
 
-
-
+printf "--Noche adicional ----------------\n";
 printf "YNA_i[0]: %.2f\n", YNA_i[0];
 printf "YNA_i[1]: %.2f\n", YNA_i[1];
 printf "YNA_i[2]: %.2f\n", YNA_i[2];
